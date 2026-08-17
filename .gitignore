@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+.vite/
+
+# Local databases and runtime state
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+hydradb_state.json
+config.json
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Logs and debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Test & coverage
+coverage/
+.vitest/
+
+# Antigravity / Gemini brain logs
+.gemini/
+
+MARKETING.md

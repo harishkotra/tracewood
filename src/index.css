@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+  color: #dad7cd;
+  background-color: #080a09;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-content: center;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow: hidden;
+  background-color: #080a09;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Glassmorphic panels */
+.glass-panel {
+  background: rgba(13, 18, 15, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(88, 129, 87, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+}
+
+.glass-panel-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-panel-hover:hover {
+  background: rgba(13, 18, 15, 0.85);
+  border-color: rgba(88, 129, 87, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(88, 129, 87, 0.05);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(8, 10, 9, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(88, 129, 87, 0.3);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(88, 129, 87, 0.5);
+}
+
+/* Pulse animation for Live indicator */
+@keyframes soft-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: drop-shadow(0 0 2px rgba(74, 222, 128, 0.6));
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.9);
+    filter: drop-shadow(0 0 1px rgba(74, 222, 128, 0.2));
+  }
+}
+
+.live-dot {
+  animation: soft-pulse 2s infinite ease-in-out;
+}
