@@ -9,6 +9,8 @@
 
 **Tracewood** is a local-first application that transforms your AI coding agent telemetry into a living, generative 3D forest. Built on top of **HydraDB** as its core context and episodic memory substrate, Tracewood maps your projects, development themes, agent tool executions, and cross-repo architectural links into organic procedural trees and underground mycelium conduits.
 
+<img width="1818" height="1188" alt="Screenshot at Aug 17 23-54-11" src="https://github.com/user-attachments/assets/8b4a5868-4fc0-4174-8662-1c4069ddeafd" />
+
 ---
 
 ## ✨ Features
@@ -172,13 +174,6 @@ We welcome contributions! Here are some high-impact features you can build:
 3. Commit your changes (`git commit -m 'Add amazing feature'`).
 4. Push to the branch (`git push origin feature/amazing-feature`).
 5. Open a Pull Request.
-
----
-
-## 👤 Author
-
-Built with 🌲 by **[Harish Kotra](https://harishkotra.me)**  
-*Explore more projects at **[DailyBuild](https://dailybuild.xyz)***
 
 ---
 
