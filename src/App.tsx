@@ -6,12 +6,22 @@ import { ProceduralTree } from './forest/trees/ProceduralTree.js';
 import { SmoothCamera } from './forest/camera/SmoothCamera.js';
 import { GrowthParticle } from './forest/particles/GrowthParticle.js';
 import { MyceliumConduits } from './forest/graph/MyceliumConduits.js';
+import { SubterraneanCavern } from './forest/graph/SubterraneanCavern.js';
+import { BlastRadiusPulse } from './forest/particles/BlastRadiusPulse.js';
 import { HUD } from './components/HUD.js';
 import { Onboarding } from './components/Onboarding.js';
+import { BlastRadiusModal } from './components/BlastRadiusModal.js';
+import { SearchPalette } from './components/SearchPalette.js';
+import { GardenTenderModal } from './components/GardenTenderModal.js';
+import { ProjectSelectorModal } from './components/ProjectSelectorModal.js';
+import { GraphExplorerModal } from './components/GraphExplorerModal.js';
 
 export default function App() {
   const {
     projects,
+    selectedProjectIds,
+    isProjectSelectorOpen,
+    setProjectSelectorOpen,
     topics,
     sessions,
     myceliumLinks,
@@ -33,6 +43,10 @@ export default function App() {
     fetchProjects,
     fetchSettings
   } = useForestStore();
+
+  const visibleProjects = useMemo(() => {
+    return projects.filter(p => selectedProjectIds.includes(p.id));
+  }, [projects, selectedProjectIds]);
 
   const [_wsError, setWsError] = useState(false);
 
@@ -76,13 +90,13 @@ export default function App() {
     };
   }, [isLive, triggerGrowthEvent, fetchProjects]);
 
-  // Organic phyllotaxis (sunflower spiral) layout
+  // Organic phyllotaxis layout
   const projectPositions = useMemo(() => {
     const positions: Record<string, [number, number, number]> = {};
     const goldenAngle = 137.5 * (Math.PI / 180);
     const spacing = 3.6;
 
-    projects.forEach((p, idx) => {
+    visibleProjects.forEach((p, idx) => {
       const r = Math.sqrt(idx + 1) * spacing;
       const theta = idx * goldenAngle;
       
@@ -92,7 +106,7 @@ export default function App() {
     });
 
     return positions;
-  }, [projects]);
+  }, [visibleProjects]);
 
   const selectedProjectPos = selectedProjectId ? projectPositions[selectedProjectId] : null;
 
@@ -177,10 +191,10 @@ export default function App() {
           selectedProjectPos={selectedProjectPos}
           selectedLeafPos={selectedLeafPos}
           isCinematicMode={isCinematicMode}
-          forestRadius={Math.sqrt(projects.length) * 3.6}
+          forestRadius={Math.sqrt(visibleProjects.length) * 3.6}
         />
 
-        {/* 3D Underground Mycelium Network (HydraDB) */}
+        {/* 1. 3D Underground Mycelium Network (HydraDB) */}
         {!isEmpty && (
           <MyceliumConduits
             links={myceliumLinks}
@@ -189,8 +203,14 @@ export default function App() {
           />
         )}
 
-        {/* Render Forest Trees */}
-        {!isEmpty && projects.map((p) => {
+        {/* 2. Subterranean Root Cavern View (HydraDB Graph) */}
+        <SubterraneanCavern />
+
+        {/* 3. Dependency Blast Radius Shockwave */}
+        <BlastRadiusPulse projectPositions={projectPositions} />
+
+        {/* 4. Render Forest Trees */}
+        {!isEmpty && visibleProjects.map((p) => {
           const projTopics = topics[p.id] || [];
           const projSessions = sessions[p.id] || [];
           const pos = projectPositions[p.id] || [0, 0, 0];
@@ -254,23 +274,18 @@ export default function App() {
         )}
       </Canvas>
 
-      {/* Empty State Overlay */}
-      {isEmpty && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none select-none">
-          <div className="glass-panel p-8 rounded-2xl flex flex-col gap-3 max-w-sm text-center border border-forest-moss/30 animate-fade-in pointer-events-auto">
-            <h2 className="text-lg font-light tracking-widest text-forest-glow">Your forest hasn't grown yet.</h2>
-            <p className="text-xs text-forest-leaf leading-relaxed">
-              Start an AI coding session or click "Scan" in settings.
-            </p>
-            <span className="text-[9px] font-mono tracking-wider uppercase text-forest-gold/80 animate-pulse mt-2">
-              Waiting for activity...
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* Main HUD Chrome */}
       {!isEmpty && <HUD />}
+
+      {/* Modals for the 4 Superpowers & Project Filter */}
+      <BlastRadiusModal />
+      <SearchPalette />
+      <GardenTenderModal />
+      <ProjectSelectorModal isOpen={isProjectSelectorOpen} onClose={() => setProjectSelectorOpen(false)} />
+      <GraphExplorerModal 
+        isOpen={useForestStore.getState().isGraphExplorerOpen} 
+        onClose={() => useForestStore.getState().setGraphExplorerOpen(false)} 
+      />
 
       {/* Onboarding Wizard */}
       {!isOnboarded && <Onboarding />}

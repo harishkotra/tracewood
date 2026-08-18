@@ -16,17 +16,11 @@
 ## ✨ Features
 
 - **🌲 Procedural Living Forest**: Every repository is an organic tree. Trunks curve with project history, branches represent semantic development themes (topics), and fluffy leaf canopies reflect completed agent sessions.
-- **⚡ Zero-Config Universal Ingestion**: Automatically scans and normalizes raw local transcripts across **10+ AI coding agents** on your machine with **zero synthetic seed data**:
-  - Claude Code
-  - Cursor & VS Code Workspace Telemetry
-  - GitHub Copilot & VS Code Chat
-  - Windsurf / Codeium
-  - Cline / Roo Code
-  - Aider CLI
-  - Continue.dev
-  - Google Gemini / Antigravity
-  - OpenAI Codex / OpenCode
-  - Pi / Factory / CommandCode
+- **⚡ Zero-Config Universal Ingestion & Harness Permissioning**: Automatically discovers and normalizes local transcripts across **10+ AI coding agents** (Claude Code, Cursor, Copilot, Windsurf, Cline, Aider, Continue, Gemini, Codex, Pi/Factory) with explicit local permission controls.
+- **🎛️ Multi-Select Project Renderer**: Interactively toggle and filter which repositories are visualized on your 3D canvas with dynamic phyllotaxis layout recalculation.
+- **🔌 Model Context Protocol (MCP) Server**: Exposes a native JSON-RPC MCP server (`src/mcp/server.ts`) over stdio, allowing IDE agents in Cursor and Claude Code to query HydraDB memory, architectural decisions, and dependency blast radius mid-session.
+- **💥 Transitive Dependency & Typosquatting Shockwaves**: Computes reverse dependency closures and Levenshtein typosquatting distances in HydraDB to simulate supply chain vulnerability impact with glowing 3D shockwave particle pulses.
+- **🕸️ HydraDB Sub-Graph Traversal Explorer**: Interactive query console to filter nodes (`Project`, `Topic`, `Session`, `DecisionNode`, `Package`) and directional edges (`CONTAINS`, `DEPENDS_ON`, `OVERWROTE`, `SHARED_PATTERN_WITH`).
 - **🍄 Underground Mycelium Network (HydraDB)**: Visualizes cross-repository semantic links as bioluminescent conduits glowing beneath the forest floor.
 - **⚠️ Agent Decision Conflict & Overwrite Detection**: Tracks when agents revised, reversed, or overwrote prior architectural rules.
 - **🎥 Smooth 360° Mouse Navigation**: Orbit, pan, zoom, and smoothly fly to any tree, branch, or leaf canopy.
@@ -46,36 +40,39 @@ flowchart TD
         A5[Cline / Roo]
         A6[Aider]
         A7[Continue]
-        A8[Gemini]
+        A8[Gemini / Codex / Pi]
     end
 
     subgraph Ingestion["Universal Ingestion Engine"]
-        U[Universal Scanner]
+        U[Universal Scanner & Detector]
         N[Session Normalizer]
     end
 
     subgraph HydraCore["HydraDB Context & Memory Engine"]
-        H_Nodes[(Graph Entities: Project, Topic, Session, Decision)]
-        H_Edges[(Edges: CONTAINS, SHARED_PATTERN, OVERWROTE)]
+        H_Nodes[(Graph Entities: Project, Topic, Session, DecisionNode, Package)]
+        H_Edges[(Edges: CONTAINS, DEPENDS_ON, OVERWROTE, SHARED_PATTERN)]
         H_Mycelium[Cross-Repo Mycelium Traversal]
-        H_Overwrites[Decision Conflict Tracking]
+        H_Blast[Reverse Transitive Blast Closure]
+        H_Typo[Levenshtein Typosquat Engine]
     end
 
-    subgraph Visualization["3D Procedural Engine & HUD"]
+    subgraph Interfaces["Visual 3D Canvas, HUD & MCP"]
         R3F[React Three Fiber Canvas]
         PT[Procedural Trees & Foliage]
         MY[Underground Mycelium Conduits]
-        CAM[Smooth Flying Orbit Camera]
         HUD[Glass HUD & Inspectors]
+        MCP[MCP Server stdio for Cursor/Claude]
+        EXP[Graph Traversal Explorer Modal]
     end
 
     MultiAgentSources --> U
     U --> N
     N --> HydraCore
-    H_Nodes --> Visualization
-    H_Edges --> Visualization
+    H_Nodes --> Interfaces
+    H_Edges --> Interfaces
     H_Mycelium --> MY
-    H_Overwrites --> HUD
+    H_Blast --> Interfaces
+    H_Typo --> Interfaces
 ```
 
 ---
@@ -85,6 +82,7 @@ flowchart TD
 - **Core & Runtime**: TypeScript, Node.js (ESM), Vite
 - **3D Graphics & Shaders**: Three.js, React Three Fiber (`@react-three/fiber`), `@react-three/drei`
 - **Graph & Context Substrate**: [HydraDB](https://hackhydra.hydradb.com/) (`src/database/hydra.ts`) + SQLite persistence
+- **Agent Integration**: Model Context Protocol (MCP) Server (`src/mcp/server.ts`)
 - **State Management**: Zustand
 - **Styling**: TailwindCSS, Lucide Icons, Glassmorphism design tokens
 
@@ -133,7 +131,7 @@ hydra.addNode({
 // Link project to a development theme (Topic)
 hydra.addEdge(projectId, topicId, 'CONTAINS');
 
-// Detect and link decision overrides (LongMemEval Track 3)
+// Detect and link decision overrides
 if (session.intent === 'refactor' || session.intent === 'bugfix') {
   hydra.addNode({
     id: `decision_${session.id}`,
@@ -148,12 +146,16 @@ if (session.intent === 'refactor' || session.intent === 'bugfix') {
 }
 ```
 
-### 2. Computing Underground Mycelium Connections
+### 2. Transitive Reverse Dependency Closure in HydraDB
 
 ```typescript
-// Traverse graph to find repos sharing architectural themes
-const myceliumLinks = hydra.getMyceliumLinks();
-// Returns: [{ sourceProjectId, targetProjectId, topic, strength, reason }, ...]
+// Reverse transitive dependency impact traversal
+const blastRadius = hydra.getDependencyBlastRadius('express');
+// Returns: { packageName: 'express', affectedProjectIds: [...], blastPercentage: 85 }
+
+// Detect nearby typosquatting variants
+const typosquats = hydra.detectTyposquats('express');
+// Returns: ['expres', 'express-js']
 ```
 
 ---
@@ -163,10 +165,9 @@ const myceliumLinks = hydra.getMyceliumLinks();
 We welcome contributions! Here are some high-impact features you can build:
 
 1. **🌲 Custom Tree Shaders & Biomes**: Add seasonal weather effects (rain, snow, autumn leaf-fall) based on agent velocity.
-2. **🔌 Model Context Protocol (MCP) Server**: Expose HydraDB memory as an MCP endpoint so Cursor and Claude Code can query past sessions directly from their editor.
-3. **📦 Dependency Blast Radius Simulation**: Parse `package.json` / `requirements.txt` into HydraDB to visually trace transitive security vulnerabilities across your trees.
-4. **📊 Git Heatmap Integration**: Overlay git commit frequency onto tree bark textures.
-5. **🕶️ WebXR / VR Support**: Walk through your coding forest in virtual reality using WebXR.
+2. **🔌 Model Context Protocol (MCP) Extensions**: Add custom MCP tools for git commit blame analysis or test suite integration.
+3. **📊 Git Heatmap Integration**: Overlay git commit frequency onto tree bark textures.
+4. **🕶️ WebXR / VR Support**: Walk through your coding forest in virtual reality using WebXR.
 
 ### Contribution Steps
 1. Fork the repository.

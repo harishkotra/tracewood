@@ -12,7 +12,9 @@
     "preview": "vite preview",
     "seed": "tsx src/database/seed.ts",
     "scan": "tsx src/database/scan.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "mcp": "node dist/mcp/server.js",
+    "dev:mcp": "tsx src/mcp/server.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",

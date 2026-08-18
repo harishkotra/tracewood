@@ -17,6 +17,8 @@ import {
   clearAllData 
 } from './database/db.js';
 import { runScan, saveIntelligenceConfig } from './ingestion/index.js';
+import { detectAgentHarnesses } from './ingestion/detector.js';
+import { hydra } from './database/hydra.js';
 import { analyzeSession, fallbackAnalysis, IntelligenceConfig } from './intelligence/provider/index.js';
 import { normalizeSession } from './ingestion/normalize/index.js';
 import { saveProject, saveSession, saveEvents, saveTopic } from './database/db.js';
@@ -151,6 +153,49 @@ app.post('/api/settings', async (req, res) => {
 app.post('/api/scan', async (_req, res) => {
   try {
     const result = await runScan();
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/harnesses', async (_req, res) => {
+  try {
+    const harnesses = await detectAgentHarnesses();
+    res.json(harnesses);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/blast-radius', async (req, res) => {
+  try {
+    const { packageName } = req.body;
+    const result = hydra.getDependencyBlastRadius(packageName || '');
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/heal-branch', async (req, res) => {
+  try {
+    const { topicId } = req.body;
+    const result = hydra.diagnoseAndHealBranch(topicId);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/graph/query', async (req, res) => {
+  try {
+    const { nodeType, edgeType, q } = req.query;
+    const result = hydra.queryGraph({
+      nodeType: nodeType as any,
+      edgeType: edgeType as any,
+      searchTerm: q as string
+    });
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

@@ -76,7 +76,7 @@ export const MyceliumConduits: React.FC<MyceliumConduitsProps> = ({
 
             {/* 2. Interactive Floating Mycelium Tooltip */}
             {isHovered && (
-              <Html position={[item.mid.x, item.mid.y + 0.8, item.mid.z]} center distanceFactor={16}>
+              <Html position={[item.mid.x, item.mid.y + 0.8, item.mid.z]} center distanceFactor={16} zIndexRange={[10, 0]}>
                 <div className="glass-panel px-3 py-1.5 rounded-lg text-[10px] font-mono text-forest-glow border border-forest-leaf/40 shadow-xl pointer-events-none whitespace-nowrap flex flex-col gap-0.5">
                   <span className="font-bold text-forest-gold flex items-center gap-1">
                     ◈ Mycelium Conduit (HydraDB)

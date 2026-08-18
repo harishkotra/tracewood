@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Project, Topic, Session } from '../../database/types.js';
+import { useForestStore } from '../../store/forestStore.js';
 
 interface ProceduralTreeProps {
   project: Project;
@@ -45,18 +46,28 @@ export const ProceduralTree: React.FC<ProceduralTreeProps> = ({
   const [hovered, setHovered] = useState(false);
   const [hoveredTopicId, setHoveredTopicId] = useState<string | null>(null);
 
+  const { timelineDate } = useForestStore();
+
+  // Filter sessions up to current time-travel date
+  const filteredSessions = useMemo(() => {
+    if (!timelineDate) return sessions;
+    return sessions.filter(s => s.startedAt && s.startedAt.split('T')[0] <= timelineDate);
+  }, [sessions, timelineDate]);
+
   const stats = useMemo(() => {
-    const totalSessions = sessions.length;
-    const totalTools = sessions.reduce((acc, s) => acc + s.toolCallCount, 0);
+    const totalSessions = filteredSessions.length;
+    const totalTools = filteredSessions.reduce((acc, s) => acc + s.toolCallCount, 0);
     
     const today = new Date().toISOString().split('T')[0];
-    const activeToday = sessions.some(s => s.startedAt.startsWith(today));
+    const targetDate = timelineDate || today;
+    const activeOnDate = filteredSessions.some(s => s.startedAt.startsWith(targetDate));
 
-    const height = Math.min(8.0, 3.2 + totalSessions * 0.18);
-    const thickness = Math.min(0.7, 0.2 + totalTools * 0.006);
+    // If project hasn't started yet in timeline, keep it tiny
+    const height = totalSessions === 0 ? 0.8 : Math.min(8.0, 2.5 + totalSessions * 0.18);
+    const thickness = totalSessions === 0 ? 0.08 : Math.min(0.7, 0.18 + totalTools * 0.006);
 
-    return { height, thickness, activeToday, totalSessions };
-  }, [sessions]);
+    return { height, thickness, activeToday: activeOnDate, totalSessions };
+  }, [filteredSessions, timelineDate]);
 
   // Curved trunk segments
   const trunkSegments = useMemo(() => {
@@ -97,34 +108,27 @@ export const ProceduralTree: React.FC<ProceduralTreeProps> = ({
       const trunkPt = trunkSegments.points[segmentIdx] || [0, 0, 0];
       
       const angle = (i / branchCount) * Math.PI * 2 + rand() * 0.6;
-      const length = Math.max(1.6, 1.1 + stats.height * 0.25 + rand() * 0.6);
+      const length = Math.max(1.4, 0.9 + stats.height * 0.22 + rand() * 0.5);
       const startRadius = trunkSegments.radii[segmentIdx] * 0.6;
 
-      const topicSessions = sessions.filter(s => s.topicId === topic.id || (!s.topicId && topic.name === 'General'));
+      const topicSessions = filteredSessions.filter(s => s.topicId === topic.id || (!s.topicId && topic.name === 'General'));
 
       let leafClouds = [];
 
       if (topicSessions.length === 0) {
+        // Dormant sprout
         const leafAngle = angle;
-        const dist = length * 0.9;
+        const dist = length * 0.8;
         const lx = trunkPt[0] + Math.cos(leafAngle) * dist;
         const ly = trunkPt[1] + (dist * 0.3);
         const lz = trunkPt[2] + Math.sin(leafAngle) * dist;
-
-        const subLeaves = [];
-        for (let j = 0; j < 3; j++) {
-          subLeaves.push({
-            pos: [(rand() - 0.5) * 0.25, (rand() - 0.5) * 0.25, (rand() - 0.5) * 0.25] as [number, number, number],
-            scale: 0.28 + rand() * 0.15
-          });
-        }
 
         leafClouds.push({
           id: `dummy_${topic.id}`,
           pos: [lx, ly, lz] as [number, number, number],
           color: '#388e3c',
           glowColor: '#1b5e20',
-          subLeaves,
+          subLeaves: [{ pos: [0, 0, 0] as [number, number, number], scale: 0.2 }],
           importance: 0.1,
           outcome: 'success' as const,
           isToday: false,
@@ -140,19 +144,20 @@ export const ProceduralTree: React.FC<ProceduralTreeProps> = ({
           const ly = trunkPt[1] + (dist * 0.3) + (rand() - 0.5) * 0.4;
           const lz = trunkPt[2] + Math.sin(leafAngle) * dist;
 
-          let primaryColor = '#43a047'; // Vibrant emerald foliage
+          let primaryColor = '#43a047';
           let glowColor = '#1b5e20';
           const todayStr = new Date().toISOString().split('T')[0];
-          const isNew = session.startedAt.startsWith(todayStr);
+          const targetDate = timelineDate || todayStr;
+          const isNew = session.startedAt.startsWith(targetDate);
 
           if (session.outcome === 'failed') {
-            primaryColor = '#bf360c'; // Warm rust autumn tone
+            primaryColor = '#bf360c';
             glowColor = '#3e2723';
           } else if (isNew) {
-            primaryColor = '#66bb6a'; // Fresh active green
+            primaryColor = '#66bb6a';
             glowColor = '#81c784';
           } else if (session.importance && session.importance > 0.7) {
-            primaryColor = '#ffd54f'; // Golden milestone bloom
+            primaryColor = '#ffd54f';
             glowColor = '#ffe082';
           }
 
@@ -185,7 +190,6 @@ export const ProceduralTree: React.FC<ProceduralTreeProps> = ({
         });
       }
 
-      // Branch midpoint for topic label pin
       const branchMid = [
         trunkPt[0] + (Math.cos(angle) * length * 0.6),
         trunkPt[1] + (length * 0.2),
@@ -205,7 +209,7 @@ export const ProceduralTree: React.FC<ProceduralTreeProps> = ({
     }
 
     return branches;
-  }, [topics, sessions, stats, rand, trunkSegments]);
+  }, [topics, filteredSessions, stats, rand, trunkSegments, timelineDate]);
 
   useFrame((state) => {
     if (!treeRef.current) return;
@@ -242,6 +246,7 @@ export const ProceduralTree: React.FC<ProceduralTreeProps> = ({
         position={[0, stats.height + 1.2, 0]}
         center
         distanceFactor={22}
+        zIndexRange={[10, 0]}
         style={{
           transition: 'all 0.2s ease',
           transform: `scale(${hovered || isSelected ? 1.15 : 0.9})`,
@@ -351,9 +356,9 @@ export const ProceduralTree: React.FC<ProceduralTreeProps> = ({
               />
             </mesh>
 
-            {/* 3D Floating Branch Topic Pin (Shows when tree or branch is selected/hovered) */}
+            {/* 3D Floating Branch Topic Pin */}
             {(isSelected || hovered || isBranchHovered) && (
-              <Html position={branch.branchMid} center distanceFactor={14}>
+              <Html position={branch.branchMid} center distanceFactor={14} zIndexRange={[10, 0]}>
                 <div 
                   onClick={(e) => {
                     e.stopPropagation();
@@ -361,7 +366,7 @@ export const ProceduralTree: React.FC<ProceduralTreeProps> = ({
                   }}
                   className={`px-2 py-0.5 rounded text-[9px] font-mono cursor-pointer transition-all ${
                     isBranchSelected
-                      ? 'bg-forest-fern text-forest-glow font-bold scale-110 shadow-md'
+                      ? 'bg-forest-fern text-forest-glow font-bold scale-105 border border-forest-leaf'
                       : 'bg-black/75 hover:bg-forest-moss text-forest-sage border border-forest-moss/40'
                   }`}
                 >

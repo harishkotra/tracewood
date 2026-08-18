@@ -314,6 +314,9 @@ export async function runUniversalScan() {
       timestamp: raw.startedAt
     });
 
+    // Ingest package dependencies into HydraDB
+    await hydra.scanProjectDependencies(projectId, raw.projectPath);
+
     // 2. Normalize and Analyze
     const { session, events } = normalizeSession(raw);
     const eventTexts = events.map(e => `[${e.type}] ${e.name}: ${e.content?.substring(0, 100)}`);
@@ -361,7 +364,7 @@ export async function runUniversalScan() {
 
     hydra.addEdge(topic.id, session.id, 'CONTAINS');
 
-    // 5. Detect and Add Decision Node Overwrites (LongMemEval Track 3)
+    // 5. Detect and Add Decision Node Overwrites
     if (session.intent === 'refactor' || session.intent === 'bugfix') {
       const decisionId = `decision_${session.id}`;
       hydra.addNode({

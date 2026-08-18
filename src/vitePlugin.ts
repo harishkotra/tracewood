@@ -12,7 +12,6 @@ export function tracewoodBackendPlugin(): Plugin {
   return {
     name: 'tracewood-backend-plugin',
     async configureServer(server: ViteDevServer) {
-      // Initialize HydraDB
       await hydra.init();
 
       server.middlewares.use(async (req, res, next) => {
@@ -49,12 +48,48 @@ export function tracewoodBackendPlugin(): Plugin {
               topics: topicsMap,
               sessions: sessionsMap,
               myceliumLinks: hydra.getMyceliumLinks(),
-              decisionConflicts: hydra.getDecisionConflicts()
+              decisionConflicts: hydra.getDecisionConflicts(),
+              troubledBranches: hydra.getTroubledBranches(),
+              knownPackages: hydra.getAllKnownPackages()
             }));
           } catch (err: any) {
             res.statusCode = 500;
             res.end(JSON.stringify({ error: err.message }));
           }
+          return;
+        }
+
+        if (url.startsWith('/api/blast-radius') && req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => body += chunk);
+          req.on('end', () => {
+            try {
+              const { packageName } = JSON.parse(body || '{}');
+              const result = hydra.getDependencyBlastRadius(packageName || '');
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify(result));
+            } catch (err: any) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: err.message }));
+            }
+          });
+          return;
+        }
+
+        if (url.startsWith('/api/heal-branch') && req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => body += chunk);
+          req.on('end', () => {
+            try {
+              const { topicId } = JSON.parse(body || '{}');
+              const result = hydra.diagnoseAndHealBranch(topicId || '');
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify(result));
+            } catch (err: any) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: err.message }));
+            }
+          });
           return;
         }
 

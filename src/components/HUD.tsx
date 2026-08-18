@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useForestStore } from '../store/forestStore.js';
 import { SettingsModal } from './SettingsModal.js';
+import { TimelineScrubber } from './TimelineScrubber.js';
 import { 
   Settings, Eye, EyeOff, Calendar, Sparkles, RefreshCw, 
   GitBranch, ArrowLeft, CheckCircle2, AlertCircle, X,
-  Network, AlertTriangle
+  Network, AlertTriangle, Search, Layers, ShieldAlert, Wrench, Filter
 } from 'lucide-react';
 
 export const HUD: React.FC = () => {
@@ -14,7 +15,9 @@ export const HUD: React.FC = () => {
     sessions,
     myceliumLinks,
     decisionConflicts,
+    troubledBranches,
     isMyceliumVisible,
+    isSubterraneanMode,
     selectedProjectId,
     selectedTopicId,
     selectedSessionId,
@@ -30,6 +33,10 @@ export const HUD: React.FC = () => {
     setCinematicMode,
     setShareableMode,
     setMyceliumVisible,
+    toggleSubterraneanMode,
+    setSearchOpen,
+    setBlastRadiusModalOpen,
+    setGardenTenderOpen,
     fetchProjects
   } = useForestStore();
 
@@ -166,17 +173,85 @@ export const HUD: React.FC = () => {
           </span>
         </div>
         
-        {/* Top Right Controls */}
-        <div className="flex gap-2">
+        {/* Top Right Controls & Superpower Tools */}
+        <div className="flex items-center gap-2">
+          
+          {/* Multi-select Project Filter */}
+          <button
+            onClick={() => useForestStore.getState().setProjectSelectorOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg glass-panel border border-forest-moss/30 text-forest-sage hover:text-forest-glow hover:border-forest-leaf transition-all text-xs"
+            title="Select projects to visualize"
+          >
+            <Filter size={13} className="text-forest-gold" />
+            <span className="text-[10px] font-mono text-forest-leaf">Filter Projects</span>
+          </button>
+
+          {/* Spotlight Search (Cmd+K) */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg glass-panel border border-forest-moss/30 text-forest-sage hover:text-forest-glow hover:border-forest-leaf transition-all text-xs"
+            title="Search memory, sessions, & packages (Cmd+K)"
+          >
+            <Search size={13} className="text-forest-gold" />
+            <span className="text-[10px] font-mono text-forest-leaf">Cmd+K</span>
+          </button>
+
+          {/* Subterranean Root Cavern View */}
+          <button
+            onClick={toggleSubterraneanMode}
+            className={`p-2 rounded-lg border transition-all ${
+              isSubterraneanMode
+                ? 'bg-forest-moss border-forest-fern text-forest-glow shadow-md'
+                : 'glass-panel border-forest-moss/20 text-forest-sage hover:border-forest-moss/40'
+            }`}
+            title={isSubterraneanMode ? "Return to Forest Surface" : "Dive into Subterranean Root Cavern (HydraDB Graph)"}
+          >
+            <Layers size={14} />
+          </button>
+
+          {/* HydraDB Graph Traversal Explorer */}
+          <button
+            onClick={() => useForestStore.getState().setGraphExplorerOpen(true)}
+            className="p-2 rounded-lg border glass-panel border-forest-moss/20 text-forest-sage hover:text-forest-gold hover:border-forest-gold/40 transition-all"
+            title="HydraDB Graph Traversal Explorer"
+          >
+            <Network size={14} />
+          </button>
+
+          {/* Supply Chain Blast Radius Simulation */}
+          <button
+            onClick={() => setBlastRadiusModalOpen(true)}
+            className="p-2 rounded-lg border glass-panel border-forest-moss/20 text-forest-sage hover:text-forest-rust hover:border-forest-rust/40 transition-all"
+            title="Supply Chain & Dependency Blast Radius"
+          >
+            <ShieldAlert size={14} />
+          </button>
+
+          {/* Tend the Garden Refactor Agent */}
+          <button
+            onClick={() => setGardenTenderOpen(true)}
+            className={`p-2 rounded-lg border transition-all flex items-center gap-1 ${
+              troubledBranches.length > 0
+                ? 'glass-panel border-forest-gold/40 text-forest-gold hover:bg-forest-moss/40'
+                : 'glass-panel border-forest-moss/20 text-forest-sage hover:border-forest-moss/40'
+            }`}
+            title="Tend the Garden (Autonomous Refactor Agent)"
+          >
+            <Wrench size={14} />
+            {troubledBranches.length > 0 && (
+              <span className="text-[9px] font-mono text-forest-gold font-bold">{troubledBranches.length}</span>
+            )}
+          </button>
+
           {/* Mycelium Network Toggle */}
           <button
             onClick={() => setMyceliumVisible(!isMyceliumVisible)}
-            className={`p-2 rounded border transition-all ${
+            className={`p-2 rounded-lg border transition-all ${
               isMyceliumVisible 
                 ? 'bg-forest-moss border-forest-fern text-forest-glow shadow-md' 
                 : 'glass-panel border-forest-moss/20 text-forest-sage/60 hover:border-forest-moss/40'
             }`}
-            title="Toggle HydraDB Mycelium Network (Cross-repo Knowledge Links)"
+            title="Toggle HydraDB Mycelium Network"
           >
             <Network size={14} />
           </button>
@@ -185,8 +260,8 @@ export const HUD: React.FC = () => {
           {decisionConflicts.length > 0 && (
             <button
               onClick={() => setShowConflictsModal(true)}
-              className="p-2 rounded border glass-panel border-forest-gold/40 text-forest-gold hover:bg-forest-moss/40 transition-all flex items-center gap-1 text-xs"
-              title="View Decision Overwrites (LongMemEval Track 3)"
+              className="p-2 rounded-lg border glass-panel border-forest-gold/40 text-forest-gold hover:bg-forest-moss/40 transition-all flex items-center gap-1 text-xs"
+              title="View Decision Overwrites"
             >
               <AlertTriangle size={14} />
               <span className="text-[10px] font-mono">{decisionConflicts.length}</span>
@@ -195,19 +270,19 @@ export const HUD: React.FC = () => {
 
           <button
             onClick={() => setTodayMode(!isTodayMode)}
-            className={`p-2 rounded border transition-all ${
+            className={`p-2 rounded-lg border transition-all ${
               isTodayMode 
                 ? 'bg-forest-moss border-forest-fern text-forest-glow' 
                 : 'glass-panel border-forest-moss/20 text-forest-sage hover:border-forest-moss/40'
             }`}
-            title="Toggle Today Mode (Focus on today's active trees)"
+            title="Toggle Today Mode"
           >
             <Calendar size={14} />
           </button>
           
           <button
             onClick={() => setShareableMode(!isShareableMode)}
-            className={`p-2 rounded border transition-all ${
+            className={`p-2 rounded-lg border transition-all ${
               isShareableMode 
                 ? 'bg-forest-moss border-forest-fern text-forest-glow' 
                 : 'glass-panel border-forest-moss/20 text-forest-sage hover:border-forest-moss/40'
@@ -219,7 +294,7 @@ export const HUD: React.FC = () => {
 
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="p-2 rounded border glass-panel border-forest-moss/20 text-forest-sage hover:border-forest-moss/40 transition-all"
+            className="p-2 rounded-lg border glass-panel border-forest-moss/20 text-forest-sage hover:border-forest-moss/40 transition-all"
             title="Open Settings"
           >
             <Settings size={14} />
@@ -400,7 +475,12 @@ export const HUD: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. BOTTOM STATS & CONTROLS */}
+      {/* 3. TIMELINE TIME-TRAVEL SCRUBBER */}
+      <div className="w-full pb-3 pointer-events-auto">
+        <TimelineScrubber />
+      </div>
+
+      {/* 4. BOTTOM STATS & CONTROLS */}
       <div className="flex justify-between items-end pointer-events-auto">
         <div className="flex gap-4 text-xs font-mono text-forest-leaf glass-panel px-4 py-2 rounded-lg border border-forest-moss/20">
           <div>
@@ -466,7 +546,7 @@ export const HUD: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. DECISION CONFLICTS / OVERWRITES MODAL (HydraDB Track 3) */}
+      {/* 5. DECISION CONFLICTS MODAL */}
       {showConflictsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm pointer-events-auto">
           <div className="w-full max-w-lg glass-panel p-6 rounded-xl flex flex-col gap-4 text-forest-sage border border-forest-gold/30 shadow-2xl">
@@ -507,7 +587,7 @@ export const HUD: React.FC = () => {
         </div>
       )}
 
-      {/* 5. DAILY RECAP MODAL */}
+      {/* 6. DAILY RECAP MODAL */}
       {dailyRecapText && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-auto">
           <div className="w-full max-w-md glass-panel p-6 rounded-xl flex flex-col gap-4 text-forest-sage border border-forest-moss/30">
@@ -535,7 +615,7 @@ export const HUD: React.FC = () => {
         </div>
       )}
 
-      {/* 6. CONFIG SETTINGS MODAL */}
+      {/* 7. CONFIG SETTINGS MODAL */}
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
     </div>

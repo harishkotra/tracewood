@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Project, Topic, Session } from '../database/types.js';
-import { MyceliumLink, DecisionConflict } from '../database/hydra.js';
+import { MyceliumLink, DecisionConflict, BlastRadiusResult, TroubledBranch } from '../database/hydra.js';
 
 interface ForestState {
   projects: Project[];
@@ -8,16 +8,50 @@ interface ForestState {
   sessions: Record<string, Session[]>;
   myceliumLinks: MyceliumLink[];
   decisionConflicts: DecisionConflict[];
+  knownPackages: { name: string; projectCount: number }[];
+  troubledBranches: TroubledBranch[];
   
   selectedProjectId: string | null;
+  selectedProjectIds: string[];
   selectedTopicId: string | null;
   selectedSessionId: string | null;
+  
+  isProjectSelectorOpen: boolean;
+  setProjectSelectorOpen: (open: boolean) => void;
+  toggleProjectSelected: (id: string) => void;
+  selectAllProjects: () => void;
+  deselectAllProjects: () => void;
   
   isLive: boolean;
   isTodayMode: boolean;
   isCinematicMode: boolean;
   isShareableMode: boolean;
   isMyceliumVisible: boolean;
+
+  // Superpower 1: Blast Radius
+  activeBlastRadius: BlastRadiusResult | null;
+  isBlastRadiusModalOpen: boolean;
+
+  // Superpower 2: Subterranean Root Cavern View
+  isSubterraneanMode: boolean;
+
+  // Superpower 3: Universal Cmd+K Search Palette
+  isSearchOpen: boolean;
+
+  // Superpower 5: HydraDB Graph Traversal Explorer
+  isGraphExplorerOpen: boolean;
+  setGraphExplorerOpen: (open: boolean) => void;
+
+  // Superpower 4: "Tend the Garden" Refactor Agent
+  isGardenTenderOpen: boolean;
+  selectedTroubledTopic: TroubledBranch | null;
+
+  // Time-Travel Timeline State
+  timelineDate: string | null;
+  timelineMinDate: string | null;
+  timelineMaxDate: string | null;
+  isPlayingTimeline: boolean;
+  timelineSpeed: number;
   
   isLoading: boolean;
   isOnboarded: boolean;
@@ -48,6 +82,26 @@ interface ForestState {
   setShareableMode: (val: boolean) => void;
   setMyceliumVisible: (val: boolean) => void;
   setOnboarded: (val: boolean) => void;
+
+  // Superpowers Actions
+  setBlastRadiusModalOpen: (open: boolean) => void;
+  triggerBlastRadius: (packageName: string) => Promise<void>;
+  clearBlastRadius: () => void;
+
+  setSubterraneanMode: (val: boolean) => void;
+  toggleSubterraneanMode: () => void;
+
+  setSearchOpen: (open: boolean) => void;
+
+  setGardenTenderOpen: (open: boolean) => void;
+  selectTroubledBranch: (branch: TroubledBranch | null) => void;
+  healBranch: (topicId: string) => Promise<{ diagnosis: string; suggestedFix: string }>;
+
+  // Timeline Actions
+  setTimelineDate: (date: string | null) => void;
+  togglePlayTimeline: () => void;
+  setTimelineSpeed: (speed: number) => void;
+  stepTimeline: () => void;
   
   triggerGrowthEvent: (event: any) => void;
   clearGrowthEvent: () => void;
@@ -56,22 +110,56 @@ interface ForestState {
   saveSettings: (settings: any) => Promise<void>;
 }
 
-export const useForestStore = create<ForestState>((set, _get) => ({
+export const useForestStore = create<ForestState>((set, get) => ({
   projects: [],
   topics: {},
   sessions: {},
   myceliumLinks: [],
   decisionConflicts: [],
+  knownPackages: [],
+  troubledBranches: [],
 
   selectedProjectId: null,
+  selectedProjectIds: [],
   selectedTopicId: null,
   selectedSessionId: null,
+  isProjectSelectorOpen: false,
+  setProjectSelectorOpen: (open) => set({ isProjectSelectorOpen: open }),
+  toggleProjectSelected: (id) => set(state => {
+    const exists = state.selectedProjectIds.includes(id);
+    const newSelected = exists
+      ? state.selectedProjectIds.filter(pId => pId !== id)
+      : [...state.selectedProjectIds, id];
+    return { selectedProjectIds: newSelected };
+  }),
+  selectAllProjects: () => set(state => ({
+    selectedProjectIds: state.projects.map(p => p.id)
+  })),
+  deselectAllProjects: () => set({ selectedProjectIds: [] }),
   
   isLive: true,
   isTodayMode: false,
   isCinematicMode: false,
   isShareableMode: false,
-  isMyceliumVisible: true, // Show underground mycelium graph by default
+  isMyceliumVisible: true,
+
+  activeBlastRadius: null,
+  isBlastRadiusModalOpen: false,
+
+  isSubterraneanMode: false,
+  isSearchOpen: false,
+
+  isGraphExplorerOpen: false,
+  setGraphExplorerOpen: (open) => set({ isGraphExplorerOpen: open }),
+
+  isGardenTenderOpen: false,
+  selectedTroubledTopic: null,
+
+  timelineDate: null,
+  timelineMinDate: null,
+  timelineMaxDate: null,
+  isPlayingTimeline: false,
+  timelineSpeed: 1,
   
   isLoading: false,
   isOnboarded: true,
@@ -89,26 +177,44 @@ export const useForestStore = create<ForestState>((set, _get) => ({
       const res = await fetch('/api/forest');
       if (res.ok) {
         const data = await res.json();
+        const projects = data.projects || [];
+        const topics = data.topics || {};
+        const sessions = data.sessions || {};
+        const myceliumLinks = data.myceliumLinks || [];
+        const decisionConflicts = data.decisionConflicts || [];
+        const troubledBranches = data.troubledBranches || [];
+        const knownPackages = data.knownPackages || [];
+
+        const allDates: string[] = [];
+        Object.values(sessions).forEach((sList: any) => {
+          sList.forEach((s: any) => {
+            if (s.startedAt) allDates.push(s.startedAt.split('T')[0]);
+          });
+        });
+        allDates.sort();
+
+        const timelineMinDate = allDates.length > 0 ? allDates[0] : null;
+        const timelineMaxDate = allDates.length > 0 ? allDates[allDates.length - 1] : null;
+
+        const currentSelected = get().selectedProjectIds;
+        const newSelected = currentSelected.length === 0
+          ? projects.map((p: any) => p.id)
+          : currentSelected.filter(id => projects.some((p: any) => p.id === id));
+
         set({ 
-          projects: data.projects || [],
-          topics: data.topics || {},
-          sessions: data.sessions || {},
-          myceliumLinks: data.myceliumLinks || [],
-          decisionConflicts: data.decisionConflicts || []
+          projects,
+          topics,
+          sessions,
+          myceliumLinks,
+          decisionConflicts,
+          troubledBranches,
+          knownPackages,
+          timelineMinDate,
+          timelineMaxDate,
+          selectedProjectIds: newSelected
         });
       }
     } catch (e) {
-      try {
-        const res = await fetch('http://localhost:3001/api/forest');
-        const data = await res.json();
-        set({
-          projects: data.projects || [],
-          topics: data.topics || {},
-          sessions: data.sessions || {},
-          myceliumLinks: data.myceliumLinks || [],
-          decisionConflicts: data.decisionConflicts || []
-        });
-      } catch (err) {}
     } finally {
       set({ isLoading: false });
     }
@@ -146,6 +252,63 @@ export const useForestStore = create<ForestState>((set, _get) => ({
   setShareableMode: (val) => set({ isShareableMode: val }),
   setMyceliumVisible: (val) => set({ isMyceliumVisible: val }),
   setOnboarded: (val) => set({ isOnboarded: val }),
+
+  setBlastRadiusModalOpen: (open) => set({ isBlastRadiusModalOpen: open }),
+  triggerBlastRadius: async (packageName) => {
+    try {
+      const res = await fetch('/api/blast-radius', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packageName })
+      });
+      const data = await res.json();
+      set({ activeBlastRadius: data });
+    } catch (e) {}
+  },
+  clearBlastRadius: () => set({ activeBlastRadius: null }),
+
+  setSubterraneanMode: (val) => set({ isSubterraneanMode: val }),
+  toggleSubterraneanMode: () => set(state => ({ isSubterraneanMode: !state.isSubterraneanMode })),
+
+  setSearchOpen: (open) => set({ isSearchOpen: open }),
+
+  setGardenTenderOpen: (open) => set({ isGardenTenderOpen: open }),
+  selectTroubledBranch: (branch) => set({ selectedTroubledTopic: branch, isGardenTenderOpen: !!branch }),
+  healBranch: async (topicId) => {
+    try {
+      const res = await fetch('/api/heal-branch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicId })
+      });
+      const data = await res.json();
+      // Remove from troubled branches list
+      set(state => ({
+        troubledBranches: state.troubledBranches.filter(b => b.topicId !== topicId)
+      }));
+      return data;
+    } catch (e) {
+      return { diagnosis: 'Error healing branch.', suggestedFix: 'Inspect logs manually.' };
+    }
+  },
+
+  setTimelineDate: (date) => set({ timelineDate: date }),
+  togglePlayTimeline: () => set(state => ({ isPlayingTimeline: !state.isPlayingTimeline })),
+  setTimelineSpeed: (speed) => set({ timelineSpeed: speed }),
+  stepTimeline: () => {
+    const { timelineDate, timelineMinDate, timelineMaxDate } = get();
+    if (!timelineMinDate || !timelineMaxDate) return;
+
+    const current = new Date(timelineDate || timelineMinDate);
+    const max = new Date(timelineMaxDate);
+    
+    current.setDate(current.getDate() + 1);
+    if (current > max) {
+      set({ isPlayingTimeline: false, timelineDate: timelineMaxDate });
+    } else {
+      set({ timelineDate: current.toISOString().split('T')[0] });
+    }
+  },
   
   triggerGrowthEvent: (event) => set({ growthEvent: event }),
   clearGrowthEvent: () => set({ growthEvent: null }),
