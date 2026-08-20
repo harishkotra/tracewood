@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
+import { hydraCloud } from './hydraCloud.js';
 
 export type HydraNodeType = 'Project' | 'Topic' | 'Session' | 'ToolEvent' | 'DecisionNode' | 'Package' | 'Symbol';
 
@@ -100,6 +101,9 @@ export class HydraGraphEngine {
       this.nodes = new Map();
       this.edges = new Map();
     }
+
+    // Initialize official HydraDB API connection if key present
+    await hydraCloud.initDatabase();
   }
 
   public async persist(): Promise<void> {
