@@ -14,7 +14,8 @@
     "scan": "tsx src/database/scan.ts",
     "test": "vitest run",
     "mcp": "node dist/mcp/server.js",
-    "dev:mcp": "tsx src/mcp/server.ts"
+    "dev:mcp": "tsx src/mcp/server.ts",
+    "sync:hydradb": "tsx scripts/syncHydra.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",

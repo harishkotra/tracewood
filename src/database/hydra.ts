@@ -2,14 +2,16 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 
-export type HydraNodeType = 'Project' | 'Topic' | 'Session' | 'ToolEvent' | 'DecisionNode' | 'Package';
+export type HydraNodeType = 'Project' | 'Topic' | 'Session' | 'ToolEvent' | 'DecisionNode' | 'Package' | 'Symbol';
 
 export type HydraEdgeType = 
   | 'CONTAINS'
   | 'SHARED_PATTERN_WITH'
   | 'OVERWROTE'
   | 'DEPENDS_ON'
-  | 'PRODUCED';
+  | 'PRODUCED'
+  | 'DEFINES'
+  | 'CALLS';
 
 export interface HydraNode {
   id: string;

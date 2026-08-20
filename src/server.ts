@@ -202,6 +202,40 @@ app.get('/api/graph/query', async (req, res) => {
   }
 });
 
+app.post('/api/cypher', async (req, res) => {
+  try {
+    const { query } = req.body;
+    const qLower = (query || '').toLowerCase();
+    
+    let nodeTypeFilter: any = undefined;
+    let edgeTypeFilter: any = undefined;
+
+    if (qLower.includes('package')) nodeTypeFilter = 'Package';
+    if (qLower.includes('decisionnode')) nodeTypeFilter = 'DecisionNode';
+    if (qLower.includes('project')) nodeTypeFilter = 'Project';
+    if (qLower.includes('symbol')) nodeTypeFilter = 'Symbol';
+
+    if (qLower.includes('depends_on')) edgeTypeFilter = 'DEPENDS_ON';
+    if (qLower.includes('overwrote')) edgeTypeFilter = 'OVERWROTE';
+    if (qLower.includes('defines')) edgeTypeFilter = 'DEFINES';
+
+    const subGraph = hydra.queryGraph({
+      nodeType: nodeTypeFilter,
+      edgeType: edgeTypeFilter
+    });
+
+    res.json({
+      queryExecuted: query,
+      returnedNodesCount: subGraph.nodes.length,
+      returnedEdgesCount: subGraph.edges.length,
+      nodes: subGraph.nodes.slice(0, 10),
+      edges: subGraph.edges.slice(0, 10)
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/recap', async (_req, res) => {
   try {
     const sessions = await getSessions();
