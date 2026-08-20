@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  hydradb:
+    image: hydradb/hydradb:latest
+    container_name: tracewood_hydradb
+    ports:
+      - "7687:7687"
+      - "8000:8000"
+    environment:
+      - HYDRA_STORAGE_ENGINE=slatedb
+      - HYDRA_DATA_DIR=/data
+    volumes:
+      - hydradb_data:/data
+    restart: unless-stopped
+
+volumes:
+  hydradb_data:

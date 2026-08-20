@@ -8,10 +8,22 @@ export type HydraEdgeType =
   | 'CONTAINS'
   | 'SHARED_PATTERN_WITH'
   | 'OVERWROTE'
+  | 'REVISED_BY'
   | 'DEPENDS_ON'
   | 'PRODUCED'
   | 'DEFINES'
   | 'CALLS';
+
+export interface DecisionLineage {
+  originalDecisionId: string;
+  originalDescription: string;
+  revisions: {
+    sessionId: string;
+    agent: string;
+    newDescription: string;
+    timestamp: string;
+  }[];
+}
 
 export interface HydraNode {
   id: string;
@@ -265,6 +277,85 @@ export class HydraGraphEngine {
       const dist = levenshteinDistance(target, clean);
       return dist > 0 && dist <= 2;
     });
+  }
+
+  public getDecisionLineage(decisionId: string): DecisionLineage | null {
+    const rootNode = this.nodes.get(decisionId);
+    if (!rootNode || rootNode.type !== 'DecisionNode') return null;
+
+    const revisions: DecisionLineage['revisions'] = [];
+    const visited = new Set<string>();
+    const queue = [decisionId];
+
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      if (visited.has(currentId)) continue;
+      visited.add(currentId);
+
+      for (const edge of this.edges.values()) {
+        if ((edge.type === 'OVERWROTE' || edge.type === 'REVISED_BY') && edge.target === currentId) {
+          const sessionNode = this.nodes.get(edge.source);
+          if (sessionNode) {
+            revisions.push({
+              sessionId: sessionNode.id,
+              agent: sessionNode.properties.provider || 'AI Agent',
+              newDescription: edge.properties?.reason || sessionNode.label,
+              timestamp: edge.timestamp
+            });
+            queue.push(sessionNode.id);
+          }
+        }
+      }
+    }
+
+    return {
+      originalDecisionId: rootNode.id,
+      originalDescription: rootNode.properties.description || rootNode.label,
+      revisions
+    };
+  }
+
+  public executeCypherTraversal(cypherQuery: string): {
+    query: string;
+    nodes: HydraNode[];
+    edges: HydraEdge[];
+    pathsCount: number;
+  } {
+    const qLower = cypherQuery.toLowerCase();
+    let nodeTypes: HydraNodeType[] = [];
+    let edgeTypes: HydraEdgeType[] = [];
+
+    if (qLower.includes('project')) nodeTypes.push('Project');
+    if (qLower.includes('topic')) nodeTypes.push('Topic');
+    if (qLower.includes('session')) nodeTypes.push('Session');
+    if (qLower.includes('decisionnode')) nodeTypes.push('DecisionNode');
+    if (qLower.includes('package')) nodeTypes.push('Package');
+    if (qLower.includes('symbol')) nodeTypes.push('Symbol');
+
+    if (qLower.includes('contains')) edgeTypes.push('CONTAINS');
+    if (qLower.includes('depends_on')) edgeTypes.push('DEPENDS_ON');
+    if (qLower.includes('overwrote')) edgeTypes.push('OVERWROTE');
+    if (qLower.includes('revised_by')) edgeTypes.push('REVISED_BY');
+    if (qLower.includes('defines')) edgeTypes.push('DEFINES');
+    if (qLower.includes('calls')) edgeTypes.push('CALLS');
+
+    const filteredNodes = Array.from(this.nodes.values()).filter(n => {
+      if (nodeTypes.length > 0 && !nodeTypes.includes(n.type)) return false;
+      return true;
+    });
+
+    const nodeIds = new Set(filteredNodes.map(n => n.id));
+    const filteredEdges = Array.from(this.edges.values()).filter(e => {
+      if (edgeTypes.length > 0 && !edgeTypes.includes(e.type)) return false;
+      return nodeIds.has(e.source) && nodeIds.has(e.target);
+    });
+
+    return {
+      query: cypherQuery,
+      nodes: filteredNodes.slice(0, 50),
+      edges: filteredEdges.slice(0, 50),
+      pathsCount: filteredEdges.length
+    };
   }
 
   public queryGraph(params: {
