@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { hydraCloud } from './hydraCloud.js';
 
-export type HydraNodeType = 'Project' | 'Topic' | 'Session' | 'ToolEvent' | 'DecisionNode' | 'Package' | 'Symbol';
+export type HydraNodeType = 'Project' | 'Topic' | 'Session' | 'ToolEvent' | 'DecisionNode' | 'Package' | 'Symbol' | 'Constraint' | 'Endpoint';
 
 export type HydraEdgeType = 
   | 'CONTAINS'
@@ -13,7 +13,10 @@ export type HydraEdgeType =
   | 'DEPENDS_ON'
   | 'PRODUCED'
   | 'DEFINES'
-  | 'CALLS';
+  | 'CALLS'
+  | 'EXPOSES'
+  | 'CONSUMES'
+  | 'VIOLATES';
 
 export interface DecisionLineage {
   originalDecisionId: string;
@@ -195,8 +198,115 @@ export class HydraGraphEngine {
         }
       }
     } catch (e) {}
-
     return packages;
+  }
+
+  // Implicit Cross-Repo API Endpoint & Constraint Scanner
+  public async scanProjectEndpointsAndConstraints(projectId: string, projectPath: string): Promise<{ endpoints: string[]; constraints: string[] }> {
+    const endpoints: string[] = [];
+    const constraints: string[] = [];
+
+    try {
+      // Scan for README or doc architectural constraints
+      const readmePath = path.join(projectPath, 'README.md');
+      try {
+        const readmeContent = await fs.readFile(readmePath, 'utf-8');
+        const lines = readmeContent.split('\n');
+        for (const line of lines) {
+          if (line.toLowerCase().includes('must') || line.toLowerCase().includes('require') || line.toLowerCase().includes('never')) {
+            const constraintText = line.replace(/^[-*#>\s]+/, '').trim();
+            if (constraintText.length > 15 && constraintText.length < 120) {
+              const cId = `constraint_${crypto.createHash('md5').update(`${projectId}_${constraintText}`).digest('hex').substring(0, 12)}`;
+              this.addNode({
+                id: cId,
+                type: 'Constraint',
+                label: constraintText,
+                properties: { projectId, source: 'README.md' },
+                timestamp: new Date().toISOString()
+              });
+              this.addEdge(projectId, cId, 'CONTAINS');
+              constraints.push(constraintText);
+            }
+          }
+        }
+      } catch (e) {}
+
+      // Scan src directory for API Endpoints & Client Calls
+      const srcDir = path.join(projectPath, 'src');
+      try {
+        const files = await fs.readdir(srcDir, { recursive: true });
+        for (const f of files) {
+          if (typeof f === 'string' && (f.endsWith('.ts') || f.endsWith('.js') || f.endsWith('.py'))) {
+            const fullFilePath = path.join(srcDir, f);
+            try {
+              const code = await fs.readFile(fullFilePath, 'utf-8');
+              
+              // Express/Fastify/Next route handlers
+              const routeMatches = code.matchAll(/(app|router)\.(get|post|put|delete|patch)\(['"]([^'"]+)['"]/g);
+              for (const match of routeMatches) {
+                const route = `${match[2].toUpperCase()} ${match[3]}`;
+                const epId = `endpoint_${crypto.createHash('md5').update(route).digest('hex').substring(0, 12)}`;
+                this.addNode({
+                  id: epId,
+                  type: 'Endpoint',
+                  label: route,
+                  properties: { route: match[3], method: match[2].toUpperCase(), file: f },
+                  timestamp: new Date().toISOString()
+                });
+                this.addEdge(projectId, epId, 'EXPOSES');
+                endpoints.push(route);
+              }
+
+              // Fetch/Axios client calls to endpoints
+              const callMatches = code.matchAll(/(fetch|axios\.(get|post|put|delete))\(['"]([^'"]+)['"]/g);
+              for (const match of callMatches) {
+                const url = match[3];
+                if (url.startsWith('/api') || url.startsWith('http')) {
+                  const targetEpId = `endpoint_${crypto.createHash('md5').update(`GET ${url}`).digest('hex').substring(0, 12)}`;
+                  if (this.nodes.has(targetEpId)) {
+                    this.addEdge(projectId, targetEpId, 'CONSUMES', { file: f });
+                  }
+                }
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    } catch (e) {}
+
+    return { endpoints, constraints };
+  }
+
+  public detectConstraintViolations(): { constraintId: string; constraintText: string; violatingSessionId: string; reason: string }[] {
+    const violations: { constraintId: string; constraintText: string; violatingSessionId: string; reason: string }[] = [];
+    const constraints = Array.from(this.nodes.values()).filter(n => n.type === 'Constraint');
+
+    for (const constraint of constraints) {
+      const cText = constraint.label.toLowerCase();
+      // Search sessions that mention terms conflicting with the constraint
+      for (const edge of this.edges.values()) {
+        if (edge.type === 'OVERWROTE' || edge.type === 'REVISED_BY') {
+          const session = this.nodes.get(edge.source);
+          if (session && session.properties.summary) {
+            const summary = session.properties.summary.toLowerCase();
+            if ((cText.includes('auth') && summary.includes('removed auth')) ||
+                (cText.includes('token') && summary.includes('bypass')) ||
+                (cText.includes('rate limit') && summary.includes('disable'))) {
+              
+              const vId = `viol_${session.id}_${constraint.id}`;
+              this.addEdge(session.id, constraint.id, 'VIOLATES', { reason: session.properties.summary });
+              violations.push({
+                constraintId: constraint.id,
+                constraintText: constraint.label,
+                violatingSessionId: session.id,
+                reason: session.properties.summary
+              });
+            }
+          }
+        }
+      }
+    }
+    return violations;
   }
 
   public getDependencyBlastRadius(packageName: string): BlastRadiusResult {
@@ -335,6 +445,8 @@ export class HydraGraphEngine {
     if (qLower.includes('decisionnode')) nodeTypes.push('DecisionNode');
     if (qLower.includes('package')) nodeTypes.push('Package');
     if (qLower.includes('symbol')) nodeTypes.push('Symbol');
+    if (qLower.includes('constraint')) nodeTypes.push('Constraint');
+    if (qLower.includes('endpoint')) nodeTypes.push('Endpoint');
 
     if (qLower.includes('contains')) edgeTypes.push('CONTAINS');
     if (qLower.includes('depends_on')) edgeTypes.push('DEPENDS_ON');
@@ -342,6 +454,9 @@ export class HydraGraphEngine {
     if (qLower.includes('revised_by')) edgeTypes.push('REVISED_BY');
     if (qLower.includes('defines')) edgeTypes.push('DEFINES');
     if (qLower.includes('calls')) edgeTypes.push('CALLS');
+    if (qLower.includes('exposes')) edgeTypes.push('EXPOSES');
+    if (qLower.includes('consumes')) edgeTypes.push('CONSUMES');
+    if (qLower.includes('violates')) edgeTypes.push('VIOLATES');
 
     const filteredNodes = Array.from(this.nodes.values()).filter(n => {
       if (nodeTypes.length > 0 && !nodeTypes.includes(n.type)) return false;

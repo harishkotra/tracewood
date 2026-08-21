@@ -314,8 +314,9 @@ export async function runUniversalScan() {
       timestamp: raw.startedAt
     });
 
-    // Ingest package dependencies into HydraDB
+    // Ingest package dependencies, API endpoints, and architectural constraints into HydraDB
     await hydra.scanProjectDependencies(projectId, raw.projectPath);
+    await hydra.scanProjectEndpointsAndConstraints(projectId, raw.projectPath);
 
     // 2. Normalize and Analyze
     const { session, events } = normalizeSession(raw);

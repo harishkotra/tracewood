@@ -94,6 +94,22 @@ const TOOLS = [
       },
       required: ['packageName']
     }
+  },
+  {
+    name: 'tracewood_check_constraint_violations',
+    description: 'Inspect architectural constraint violations across repositories and sessions using HydraDB graph traversal.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+  {
+    name: 'tracewood_get_cross_repo_api_network',
+    description: 'Retrieve implicit cross-repository HTTP/gRPC endpoint networks exposed and consumed by local repos.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
   }
 ];
 
@@ -229,6 +245,36 @@ async function handleToolCall(name: string, args: any) {
             targetPackage: args.packageName,
             nearbyVariantsFound: typosquats.length,
             variants: typosquats
+          }, null, 2)
+        }
+      ]
+    };
+  }
+
+  if (name === 'tracewood_check_constraint_violations') {
+    const violations = hydra.detectConstraintViolations();
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            totalViolations: violations.length,
+            violations
+          }, null, 2)
+        }
+      ]
+    };
+  }
+
+  if (name === 'tracewood_get_cross_repo_api_network') {
+    const result = hydra.executeCypherTraversal('MATCH (p:Project)-[:EXPOSES|CONSUMES]->(e:Endpoint) RETURN p, e;');
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            endpointsCount: result.nodes.length,
+            connections: result.edges
           }, null, 2)
         }
       ]

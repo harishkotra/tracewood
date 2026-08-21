@@ -132,6 +132,8 @@ export const GraphExplorerModal: React.FC<{ isOpen: boolean; onClose: () => void
                 <option value="DecisionNode">DecisionNode</option>
                 <option value="Package">Package</option>
                 <option value="Symbol">Symbol (Code Graph)</option>
+                <option value="Constraint">Constraint (Architectural Rules)</option>
+                <option value="Endpoint">Endpoint (API Network)</option>
               </select>
 
               <select
@@ -143,8 +145,9 @@ export const GraphExplorerModal: React.FC<{ isOpen: boolean; onClose: () => void
                 <option value="CONTAINS">CONTAINS</option>
                 <option value="DEPENDS_ON">DEPENDS_ON</option>
                 <option value="OVERWROTE">OVERWROTE</option>
-                <option value="DEFINES">DEFINES</option>
-                <option value="CALLS">CALLS</option>
+                <option value="EXPOSES">EXPOSES</option>
+                <option value="CONSUMES">CONSUMES</option>
+                <option value="VIOLATES">VIOLATES</option>
               </select>
             </div>
 
@@ -215,7 +218,9 @@ export const GraphExplorerModal: React.FC<{ isOpen: boolean; onClose: () => void
               {[
                 { label: 'Project Dependencies', q: 'MATCH (p:Project)-[:DEPENDS_ON]->(k:Package) RETURN p, k;' },
                 { label: 'Decision Overwrites', q: 'MATCH (s:Session)-[:OVERWROTE]->(d:DecisionNode) RETURN s, d;' },
-                { label: 'Code Symbols', q: 'MATCH (p:Project)-[:DEFINES]->(sym:Symbol) RETURN p, sym;' }
+                { label: 'API Route Network', q: 'MATCH (p:Project)-[:EXPOSES|CONSUMES]->(e:Endpoint) RETURN p, e;' },
+                { label: 'Architectural Rules', q: 'MATCH (p:Project)-[:CONTAINS]->(c:Constraint) RETURN p, c;' },
+                { label: 'Constraint Violations', q: 'MATCH (s:Session)-[:VIOLATES]->(c:Constraint) RETURN s, c;' }
               ].map((p, idx) => (
                 <button
                   key={idx}

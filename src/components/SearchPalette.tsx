@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useForestStore } from '../store/forestStore.js';
+import { hydraCloud } from '../database/hydraCloud.js';
 import { Search, FolderTree, GitBranch, Leaf, Package, X, ArrowRight } from 'lucide-react';
 
 export const SearchPalette: React.FC = () => {
@@ -121,6 +122,7 @@ export const SearchPalette: React.FC = () => {
                   onClick={() => {
                     selectProject(p.id);
                     setSearchOpen(false);
+                    hydraCloud.submitFeedback(`search_${p.id}`, `User selected project ${p.name}`, 'positive');
                   }}
                   className="flex items-center justify-between p-2 rounded-lg hover:bg-forest-moss/40 cursor-pointer text-xs transition-colors group"
                 >
