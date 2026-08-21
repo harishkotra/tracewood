@@ -7,6 +7,7 @@ export default defineConfig({
     react(),
     tracewoodBackendPlugin()
   ],
+  envPrefix: ['VITE_', 'HYDRA_DB_', 'HYDRADB_'],
   server: {
     port: 5173,
     host: true
