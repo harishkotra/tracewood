@@ -1,20 +1,25 @@
-import { HydraDBClient } from "@hydradb/sdk";
-import dotenv from 'dotenv';
-import path from 'path';
-import fs from 'fs/promises';
+const getEnv = (key: string): string | undefined => {
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key];
+  }
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+    return (import.meta as any).env[key] || (import.meta as any).env[`VITE_${key}`];
+  }
+  return undefined;
+};
 
-dotenv.config();
-
-const API_KEY = process.env.HYDRA_DB_API_KEY || process.env.HYDRADB_API_KEY;
-const DATABASE_NAME = process.env.HYDRA_DB_DATABASE || "tracewood_workspace";
+const API_KEY = getEnv("HYDRA_DB_API_KEY") || getEnv("HYDRADB_API_KEY");
+const DATABASE_NAME = getEnv("HYDRA_DB_DATABASE") || "tracewood_workspace";
 
 export class OfficialHydraDBEngine {
-  private client: HydraDBClient | null = null;
+  private client: any = null;
   private isReady: boolean = false;
 
   constructor() {
     if (API_KEY) {
-      this.client = new HydraDBClient({ token: API_KEY });
+      import('@hydradb/sdk').then(({ HydraDBClient }) => {
+        this.client = new HydraDBClient({ token: API_KEY });
+      }).catch(() => {});
     }
   }
 
