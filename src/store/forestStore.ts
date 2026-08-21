@@ -197,9 +197,10 @@ export const useForestStore = create<ForestState>((set, get) => ({
         const timelineMaxDate = allDates.length > 0 ? allDates[allDates.length - 1] : null;
 
         const currentSelected = get().selectedProjectIds;
+        const allProjectIds = projects.map((p: any) => p.id);
         const newSelected = currentSelected.length === 0
-          ? projects.map((p: any) => p.id)
-          : currentSelected.filter(id => projects.some((p: any) => p.id === id));
+          ? allProjectIds
+          : Array.from(new Set([...currentSelected, ...allProjectIds]));
 
         set({ 
           projects,
