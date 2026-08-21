@@ -105,6 +105,19 @@ export function tracewoodBackendPlugin(): Plugin {
           return;
         }
 
+        if (url.startsWith('/api/harnesses')) {
+          try {
+            const { detectAgentHarnesses } = await import('./ingestion/detector.js');
+            const harnesses = await detectAgentHarnesses();
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(harnesses));
+          } catch (err: any) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
         if (url.startsWith('/api/scan') && req.method === 'POST') {
           try {
             const result = await runScan();
