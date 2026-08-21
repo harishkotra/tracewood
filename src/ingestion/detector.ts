@@ -21,70 +21,81 @@ export async function detectAgentHarnesses(): Promise<HarnessDetectionResult[]> 
       id: 'claude',
       name: 'Claude Code CLI',
       category: 'cli' as const,
-      dir: path.join(homeDir, '.claude'),
+      dirs: [path.join(homeDir, '.claude')],
       description: 'Official Anthropic Claude CLI tool'
     },
     {
       id: 'codex',
       name: 'OpenAI Codex / CLI',
       category: 'cli' as const,
-      dir: path.join(homeDir, '.codex'),
+      dirs: [path.join(homeDir, '.codex')],
       description: 'OpenAI CLI agent session logs'
     },
     {
       id: 'gemini',
       name: 'Gemini CLI / Antigravity',
       category: 'cli' as const,
-      dir: path.join(homeDir, '.gemini'),
+      dirs: [path.join(homeDir, '.gemini')],
       description: 'Google Gemini CLI and Antigravity logs'
     },
     {
       id: 'cursor',
       name: 'Cursor IDE',
       category: 'standalone_app' as const,
-      dir: path.join(homeDir, 'Library', 'Application Support', 'Cursor'),
+      dirs: [
+        path.join(homeDir, '.cursor'),
+        path.join(homeDir, 'Library', 'Application Support', 'Cursor')
+      ],
       description: 'AI-first code editor session history'
     },
     {
       id: 'copilot',
       name: 'GitHub Copilot',
       category: 'editor_extension' as const,
-      dir: path.join(homeDir, '.copilot'),
+      dirs: [path.join(homeDir, '.copilot')],
       description: 'GitHub Copilot Chat telemetry'
     },
     {
       id: 'windsurf',
       name: 'Windsurf / Codeium',
       category: 'standalone_app' as const,
-      dir: path.join(homeDir, '.codeium'),
+      dirs: [
+        path.join(homeDir, '.codeium'),
+        path.join(homeDir, 'Library', 'Application Support', 'Windsurf')
+      ],
       description: 'Windsurf Cascade AI agent logs'
     },
     {
       id: 'cline',
       name: 'Cline / Roo Code',
       category: 'editor_extension' as const,
-      dir: path.join(homeDir, 'Library', 'Application Support', 'Code', 'User', 'globalStorage', 'saoudrizwan.claude-dev'),
+      dirs: [
+        path.join(homeDir, 'Library', 'Application Support', 'Code', 'User', 'globalStorage', 'saoudrizwan.claude-dev')
+      ],
       description: 'Autonomous Coding Agent for VS Code'
     },
     {
       id: 'aider',
       name: 'Aider CLI',
       category: 'cli' as const,
-      dir: path.join(homeDir, '.aider.chat.history.md'),
+      dirs: [
+        path.join(homeDir, '.aider'),
+        path.join(homeDir, '.aider.chat.history.md')
+      ],
       description: 'Command-line AI pair programming tool'
     },
     {
       id: 'continue',
       name: 'Continue.dev',
       category: 'editor_extension' as const,
-      dir: path.join(homeDir, '.continue'),
+      dirs: [path.join(homeDir, '.continue')],
       description: 'Open-source AI code assistant'
     },
     {
       id: 'pi',
       name: 'Pi / CommandCode / Factory',
       category: 'cli' as const,
-      dir: path.join(homeDir, '.pi'),
+      dirs: [path.join(homeDir, '.pi')],
       description: 'Autonomous developer agent harnesses'
     }
   ];
@@ -92,47 +103,47 @@ export async function detectAgentHarnesses(): Promise<HarnessDetectionResult[]> 
   const results: HarnessDetectionResult[] = [];
 
   for (const t of targets) {
-    try {
-      const stat = await fs.stat(t.dir);
-      let sessionCount = 0;
-      let lastActive: string | undefined;
+    let found = false;
+    let detectedPath = t.dirs[0];
+    let sessionCount = 0;
+    let lastActive: string | undefined;
 
-      if (stat.isDirectory()) {
-        try {
-          const files = await fs.readdir(t.dir, { recursive: true });
-          sessionCount = files.filter(f => 
-            typeof f === 'string' && (f.endsWith('.json') || f.endsWith('.jsonl') || f.endsWith('.md'))
-          ).length;
-        } catch {
+    for (const d of t.dirs) {
+      try {
+        const stat = await fs.stat(d);
+        found = true;
+        detectedPath = d;
+
+        if (stat.isDirectory()) {
+          try {
+            const files = await fs.readdir(d, { recursive: true });
+            sessionCount = files.filter(f => 
+              typeof f === 'string' && (f.endsWith('.json') || f.endsWith('.jsonl') || f.endsWith('.md'))
+            ).length;
+          } catch {
+            sessionCount = 1;
+          }
+          lastActive = stat.mtime.toISOString();
+        } else {
           sessionCount = 1;
+          lastActive = stat.mtime.toISOString();
         }
-        lastActive = stat.mtime.toISOString();
-      } else {
-        sessionCount = 1;
-        lastActive = stat.mtime.toISOString();
+        break; // Stop at first found path
+      } catch {
+        // try next candidate dir
       }
-
-      results.push({
-        id: t.id,
-        name: t.name,
-        category: t.category,
-        detected: true,
-        path: t.dir,
-        sessionCount,
-        lastActive,
-        description: t.description
-      });
-    } catch {
-      results.push({
-        id: t.id,
-        name: t.name,
-        category: t.category,
-        detected: false,
-        path: t.dir,
-        sessionCount: 0,
-        description: t.description
-      });
     }
+
+    results.push({
+      id: t.id,
+      name: t.name,
+      category: t.category,
+      detected: found,
+      path: detectedPath,
+      sessionCount,
+      lastActive,
+      description: t.description
+    });
   }
 
   return results;
